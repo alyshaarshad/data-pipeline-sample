@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # Localstack service
+  sample-localstack:
+    image: localstack/localstack
+    networks:
+      - samplenet
+    ports:
+      - "4566:4566"
+    env_file:
+      - .env
+    environment:
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+      - HOSTNAME_EXTERNAL=sample-localstack
+      - DEFAULT_REGION=ap-south-1
+      - SERVICES=sqs
+      - DEBUG=${DEBUG- }
+      - DATA_DIR=${DATA_DIR- }
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  # Application services
+  sample-worker:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    networks:
+      - samplenet
+    depends_on:
+      - sample-localstack
+      - sample-db
+    env_file:
+      - .env
+    environment:
+      - QUEUE_URL
+      - QUEUE_ACCESS_KEY
+      - QUEUE_SECRET
+      - QUEUE_TOKEN
+      - DB_HOST
+      - DB_PORT
+      - DB_USER
+      - DB_PASSWORD
+      - DB_NAME
+      - TABLE_NAME
+      - HOSTNAME_EXTERNAL
+      
+  sample-db:
+    image: mysql:latest
+    networks:
+      - samplenet
+    env_file:
+      - .env
+    environment:
+      - MYSQL_DATABASE
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql:/docker-entrypoint-initdb.d
+
+networks:
+  samplenet:
+    external: true
